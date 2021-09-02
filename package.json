@@ -1,0 +1,35 @@
+{
+  "name": "solana_testing",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon ./src/index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@project-serum/associated-token": "0.1.0",
+    "@project-serum/awesome-serum": "1.0.1",
+    "@project-serum/pool": "0.2.2",
+    "@project-serum/serum": "^0.13.57",
+    "@solana/web3.js": "^1.22.0",
+    "axios": "^0.21.1",
+    "base58-js": "^1.0.0",
+    "bn.js": "^5.2.0",
+    "body-parser": "^1.19.0",
+    "bs58": "^4.0.1",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "moment": "^2.29.1",
+    "mongod": "^2.0.0",
+    "mongodb": "^4.0.1",
+    "node-fetch": "^2.6.1"
+  },
+  "devDependencies": {
+    "ts-node": "^10.2.0",
+    "typescript": "^4.3.5"
+  }
+}
