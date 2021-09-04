@@ -207,6 +207,11 @@ var cors = require('cors')
 var express = require('express');
 var app = express();
 app.use(cors())
+
+app.get('/welcome', function (req, res){
+  res.send("Server is working!");
+});
+
 app.get('/getUserData/:walletAddress', async function (req, res) {
   let walletAddress = req.params.walletAddress;
   let db = await MongoClient.connect(url)
