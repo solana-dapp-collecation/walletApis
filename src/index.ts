@@ -164,8 +164,13 @@ function filterRequiredTransactions(allResponses, tokenAccountResponse, ownerAdd
       [parsedInstructions, mintTransactionMapping] = parseInstructions(signature, instructionsExists.instructions, tokenAccountResponse, transaction.result.blockTime, mintTransactionMapping);
     }
     else if(transaction && transaction.result && transaction.result.meta && transaction.result.meta.logMessages){
+      try {
       if (transaction.result.meta.logMessages.includes("Program 11111111111111111111111111111111 success"))
       [parsedInstructions, mintTransactionMapping] = processSolTransfer(signature, transaction.result, ownerAddress, transaction.result.blockTime, mintTransactionMapping);
+      }
+      catch(e){
+        console.log("Error Handling")
+      }
     }
     if (parsedInstructions.length > 0)
       signatureTransactionMapping[signature] = parsedInstructions;
