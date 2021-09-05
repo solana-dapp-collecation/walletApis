@@ -1,0 +1,110 @@
+This repo contains the APIs used by the catoFolio page. There are 2 api's exposed here.
+
+API 1: (getUserData/:walletAddress)
+This api is responsible for sending the indexed information of the user wallets to the UI. We add new data
+for each user at 12am UTC using the script repo https://github.com/SOL-CAT/scriptsSave
+The data we save in our database for each wallet looks like below, which we process in this api and
+send back to the UI in the format required for visualizations
+
+    "accountAddress": "Gaw5HBXFe2W9uepHQ8ehGpHQ6eqEvAswdt9BHzPnet69",
+    "dailyInfos": [{
+        "__time": "27/08/2021 01:35:09 am",
+        "balances": [{
+            "ownerTokenAddress": "EafvraonBE9bgdg4iA1WKFTcVn2LWygTHRqndaDbE1kB",
+            "effectiveMint": "5p2zjqCd1WJzAVgcEnjhb9zWDU7b9XVhFhx4usiyN7jB",
+            "amount": 0,
+            "tokenName": "CATO",
+            "supply": 0,
+            "marketAddress": "9fe1MWiKqUdwift3dEpxuRHWftG72rysCRHbxDy6i9xB",
+            "price": 0.00133
+        }, {
+            "ownerTokenAddress": "3NYNWX9YS6JP816vnuKzHMdAkbLAG9zEHgnh3agpWSRT",
+            "effectiveMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+            "amount": 0.298042,
+            "tokenName": "USDT",
+            "supply": 0,
+            "marketAddress": "77quYg4MGneUdjgXCunt9GgM1usmrxKY31twEy3WHwcS",
+            "price": 1
+        }, {
+            "ownerTokenAddress": "BPXq6pemJnEZ519wMmedhFyntXHsmyQLHaNcTYMvVCaq",
+            "effectiveMint": "4wjPQJ6PrkC4dHhYghwJzGBVP78DkBzA2U3kHoFNBuhj",
+            "amount": 0,
+            "tokenName": "LIQ",
+            "supply": 0,
+            "marketAddress": "FLKUQGh9VAG4otn4njLPUf5gaUPx5aAZ2Q6xWiD3hH5u",
+            "price": 0.45
+        }, {
+            "ownerTokenAddress": "GakqS9VTcWwS9YVZbZikicy8JWMLZnbUFNUu9xhg8pDw",
+            "effectiveMint": "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt",
+            "amount": 0.01,
+            "tokenName": "SRM",
+            "supply": 0,
+            "marketAddress": "ByRys5tuUWDgL73G8JBAEfkdFf8JWBzPBDHsBVQ5vbQA",
+            "price": 6.491
+        }, {
+            "ownerTokenAddress": "3RLhJVFbGFdn47as42wzqtJp5Psu1zEBi2F5Xo57EdM7",
+            "effectiveMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "amount": 10.743074,
+            "tokenName": "USDC",
+            "supply": 0,
+            "marketAddress": "",
+            "price": 1
+        }, {
+            "ownerTokenAddress": "tkZJKgXzraEwR4j4fPmciwGuxH7GZFdMk8bBvd49uGs",
+            "effectiveMint": "E2w4meu62oGGTpv6zbJSxBgVzxFFExYoXHa8WdLWdagA",
+            "amount": 686209,
+            "tokenName": "",
+            "supply": 0,
+            "marketAddress": "",
+            "price": 0
+        }]
+    }]
+
+You can refer to the function collectAndSaveData() to see how we get all this data.
+
+API2: ( getTransactions/:walletAddress)
+This api is responsible for fetching the confirmed signatures and parsing instructions. It uses the solana/web3 
+library to get all the infos. Check the api in the code for how we get and parse the transactions using the
+APIs. We focus on debits and credits in the transaction parsing so that it is easy for the user to 
+figure out what is debited/credited from her account and not the complex info we see in solscan.
+Future plan is to add a "stats for nerds" toggle so that they can see the complex info here itself if they wish.
+Sample response from this api looks like this:
+
+    "ownerAddress": "Gaw5HBXFe2W9uepHQ8ehGpHQ6eqEvAswdt9BHzPnet69",
+    "transactions": {
+    "22oP7qmJkSLtVuZbA8Hc5MWR9imQgYz9unJj7r6w4Q9Q28UM5kMteTTNPuvQbJBXE7cEQwcYKMGxuArf2MetfvkJ": [
+      {
+        "type": "Send",
+        "source": "7Vwn6ogwtEE9yMSnbeCZH2QBn891ohbngSHavaFYvJvu",
+        "destination": "77XHXCWYQ76E9Q3uCuz1geTaxsqJZf9RfX5ZY7yyLDYt",
+        "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "amount": -490.89,
+        "tokenName": "USDC",
+        "time": 1630526023,
+        "signature": "22oP7qmJkSLtVuZbA8Hc5MWR9imQgYz9unJj7r6w4Q9Q28UM5kMteTTNPuvQbJBXE7cEQwcYKMGxuArf2MetfvkJ"
+      }
+    ],
+    "2nPHeoSLUmYAgdAVhAeRmZct5b8twjgc6rP1v9T7GNqqSxdWndtL5v7qtz9bAssFPxjiMdjha2TeToE7kVgxLoQP": [
+      {
+        "type": "Receive",
+        "source": "BJCuUcQMqcLhQXPkbUrX2LwtiX4LxGrFSP3H7Y5e9bkT",
+        "destination": "3RLhJVFbGFdn47as42wzqtJp5Psu1zEBi2F5Xo57EdM7",
+        "mintAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "amount": 500.15,
+        "tokenName": "USDC",
+        "time": 1630419014,
+        "signature": "2nPHeoSLUmYAgdAVhAeRmZct5b8twjgc6rP1v9T7GNqqSxdWndtL5v7qtz9bAssFPxjiMdjha2TeToE7kVgxLoQP"
+      }
+    ],
+    "5BzrBT7q7pTdpuDexNJKHPEsqmdztGwwcY8AEKaptYMYhPqfshgBewSJ8AFnMKf51VS44QzBFDAVMu2UfgZsgwVT": [
+      {
+        "type": "Receive",
+        "source": "52xH7kiyZgKbntEXbS2G3Q4PSW354cK9FF4XqzLdbyvN",
+        "destination": "Gaw5HBXFe2W9uepHQ8ehGpHQ6eqEvAswdt9BHzPnet69",
+        "mintAddress": "11111111111111111111111111111111",
+        "amount": 0.049,
+        "tokenName": "SOL",
+        "time": 1630387251,
+        "signature": "5BzrBT7q7pTdpuDexNJKHPEsqmdztGwwcY8AEKaptYMYhPqfshgBewSJ8AFnMKf51VS44QzBFDAVMu2UfgZsgwVT"
+      }
+    ]}
