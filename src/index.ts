@@ -1,10 +1,13 @@
-import {checkDbForWallet, formatDataAPI1} from "./dbOperations";
+import {checkDbForWallet, formatDataAPI1, insertDb, updateDb, checkDbForOwner} from "./dbOperations";
+import {getPrice, getOwnerInfo} from "./tokens";
 import * as tokenData from "./tokenInfoBackup.json";
 import axios from "axios";
-
+import moment from "moment";
+import {PublicKey, Connection } from "@solana/web3.js";
 var MongoClient = require('mongodb').MongoClient;
 var url = "mongodb://localhost:27017/";
-
+var connection = new Connection("https://solana-api.projectserum.com");
+const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 function getTokenNameFromMint(mintAddress){
   for (var i=0; i<tokenData.tokens.length; i++){
@@ -218,8 +221,16 @@ app.get('/getUserData/:walletAddress', async function (req, res) {
   var dbo = db.db("mydb");
   let ifUserExists = await checkDbForWallet(walletAddress, dbo);
   let responseToSend;
-  if(!ifUserExists)
+  if(!ifUserExists){
     res.send({ownerAddress:walletAddress, data:"First time user"});
+    try{
+    let walletAddressPublicKey = new PublicKey(walletAddress);
+    collectAndSaveData(walletAddressPublicKey);
+    }
+    catch(e){
+      console.log("caught invalid address");
+    }
+  }
   else{
     responseToSend = await formatDataAPI1(ifUserExists);
     res.send({ownerAddress:walletAddress, data:responseToSend});
@@ -239,3 +250,113 @@ var server = app.listen(8081, function () {
   
   console.log("Example app listening at http://%s:%s", host, port)
 })
+
+//script code for saving first time user
+const collectAndSaveData = async (solAddress) => {
+  var response = await getOwnerInfo(connection, solAddress);
+  if (response.length === 0)
+  {
+    console.log("Only Sol with user. Do more when we figure out to calculate sol balance");
+    return;
+  }
+  let db = await MongoClient.connect(url)
+  var dbo = db.db("mydb");
+  let ifUserExists = await checkDbForOwner(solAddress.toBase58(), dbo);
+  let formattedData;
+  if (!ifUserExists){
+    formattedData = await formatFirstTimeData(solAddress, response);
+    insertDb(dbo, formattedData, "dailyInfo");
+  }
+  else{
+    formattedData =await formatRecurringData(ifUserExists[0], response);
+    updateDb(dbo, ifUserExists[0].accountAddress, formattedData, "dailyInfo");
+  }
+  console.log("finished collection");
+};
+
+async function formatFirstTimeData(ownerAddress, response){
+let balances =[];
+for (var i=0; i<response.length; i++){
+  let ownerTokenAddress = response[i].ownerTokenAddress, 
+      balance = response[i].balance , 
+      effectiveMint = response[i].effectiveMint , 
+      tokenName = response[i].tokenName , 
+      supply = response[i].supply;
+
+  let marketAddress = "";
+  for (var j=0; j<tokenData.tokens.length; j++){
+    if (effectiveMint === tokenData.tokens[j].tokenMint)
+    {
+      marketAddress = tokenData.tokens[j].marketAddress;
+      break;
+    }
+  }
+  let price = await getPrice(new Connection("https://solana-api.projectserum.com"),marketAddress);
+  if (effectiveMint === USDC_MINT)
+    price =1;
+  if (marketAddress !== "")
+    balances.push({
+        "ownerTokenAddress": ownerTokenAddress,
+        "effectiveMint": effectiveMint,
+        "amount": parseFloat(balance),
+        "tokenName": tokenName,
+        "supply": supply,
+        "marketAddress": marketAddress,
+        "price": price
+    })
+};
+let objectToInsert = {
+  accountAddress: ownerAddress.toBase58(),
+  dailyInfos: [
+    {
+      __time: moment().format("DD/MM/YYYY HH:mm:ss a"),
+      balances: balances
+    }
+  ]
+}
+return objectToInsert;
+}
+
+async function formatRecurringData(dbData, apiResponse){
+let existingDailyInfo = dbData.dailyInfos;
+let balances = [];
+for (var i=0; i<apiResponse.length; i++){
+  let ownerTokenAddress = apiResponse[i].ownerTokenAddress, 
+      balance = apiResponse[i].balance , 
+      effectiveMint = apiResponse[i].effectiveMint , 
+      tokenName = apiResponse[i].tokenName , 
+      supply = apiResponse[i].supply;
+
+  let marketAddress = "";
+  for (var j=0; j<tokenData.tokens.length; j++){
+    if (effectiveMint === tokenData.tokens[j].tokenMint)
+    {
+      marketAddress = tokenData.tokens[j].marketAddress;
+      break;
+    }
+  }
+  let price = await getPrice(new Connection("https://solana-api.projectserum.com"),marketAddress);
+  if (effectiveMint === USDC_MINT)
+    price =1;
+  if (marketAddress !== "")
+    balances.push({
+      "ownerTokenAddress": ownerTokenAddress,
+      "effectiveMint": effectiveMint,
+      "amount": parseFloat(balance),
+      "tokenName": tokenName,
+      "supply": supply,
+      "marketAddress": marketAddress,
+      "price": price
+    });
+};
+existingDailyInfo.push({
+  __time: moment().format("DD/MM/YYYY HH:mm:ss a"),
+  balances: balances
+});
+
+let objectToInsert = {
+  accountAddress: dbData.accountAddress,
+  dailyInfos: existingDailyInfo
+}
+return objectToInsert;
+}

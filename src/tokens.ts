@@ -1,4 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
+import * as BufferLayout from "buffer-layout";
 import { Market } from '@project-serum/serum';
 export const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
@@ -6,7 +7,7 @@ export const TOKEN_PROGRAM_ID = new PublicKey(
 export const PROGRAM_ID = new PublicKey(
   "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
 );
-
+import * as tokens from "./tokenInfoBackup.json";
 export async function getSolBalance(
   connection: Connection,
   ownerAddress: PublicKey,
@@ -72,3 +73,80 @@ export async function getPrice(
   }
   return amount;
 }
+
+export const ACCOUNT_LAYOUT = BufferLayout.struct([
+  BufferLayout.blob(32, "mint"),
+  BufferLayout.blob(32, "owner"),
+  BufferLayout.nu64("amount"),
+  BufferLayout.blob(93),
+]);
+
+
+export function parseTokenAccountData(data: Buffer): {
+  mint: PublicKey;
+  owner: PublicKey;
+  amount: number;
+} {
+  let { mint, owner, amount } = ACCOUNT_LAYOUT.decode(data);
+  return {
+    mint: new PublicKey(mint),
+    owner: new PublicKey(owner),
+    amount,
+  };
+}
+
+export function getOwnedAccountsFilters(publicKey: PublicKey) {
+  return [
+    {
+      memcmp: {
+        offset: 32,
+        bytes: publicKey.toBase58(),
+      },
+    },
+    {
+      dataSize: 165,
+    },
+  ];
+}
+
+export async function getOwnerInfo(
+  connection: Connection,
+  ownerAddress: PublicKey,
+) {
+  try{
+  let response = await Promise.resolve(connection.getProgramAccounts(TOKEN_PROGRAM_ID,{commitment: "recent", filters: getOwnedAccountsFilters(ownerAddress)}))
+  const parsedSplAccounts = response.map(
+    ({ pubkey, account }) => {
+      let decimal,
+        name = "",
+        supply, 
+        effectiveMint = parseTokenAccountData(account.data).mint.toBase58(),
+        balanceWithoutDecimal = parseTokenAccountData(account.data).amount.toString();
+      for (var i=0; i<tokens.tokens.length; i++){
+        if (effectiveMint === tokens.tokens[i].tokenMint)
+        {
+          decimal = tokens.tokens[i].decimals;
+          name = tokens.tokens[i].tokenName || "";
+          supply = tokens.tokens[i].supply || 0
+          break;
+        }
+        decimal = 0;
+        name = "";
+        supply = 0;
+      }
+      let balance = formatDecimal(balanceWithoutDecimal, decimal);
+      return {
+        ownerTokenAddress: pubkey.toBase58(),
+        balance: balance,
+        effectiveMint: effectiveMint,
+        tokenName: name,
+        supply: supply
+      };
+    },
+  );
+  return parsedSplAccounts;
+}
+catch(err){
+  console.error("Failed to fetch details for owner "+ownerAddress.toBase58());
+  return null;
+}}
